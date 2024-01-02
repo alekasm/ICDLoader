@@ -23,15 +23,12 @@ const char FileMapData[FILEMAP_SIZE] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-//Function exists before StartGame at 0x4079A0
-const int INJECTED_FUNCWITHSTACK_SIZE = 0x80;
-//This data is only available after decryption
-const char InjectedFuncWithStack[INJECTED_FUNCWITHSTACK_SIZE] = {
+unsigned char InjectedStack[0x38] = {
 	0x00, 0x00, 0x00, 0x00, //0x00 - 0x03: LoadLibraryA Address
 	0x00, 0x00, 0x00, 0x00, //0x04 - 0x07: GetProcAddress Address
 	0x00, 0x00, 0x00, 0x00, //0x08 - 0x0B: FreeLibrary Address
 	0x00, 0x00, 0x00, 0x00, //0x0C - 0x0F: Pointer to Ox7FF052C args
-	0x00, 0x00, 0x00, 0x00, //0x10 - 0x23: String "Ox7FF052C"
+	0x00, 0x00, 0x00, 0x00, //0x10 - 0x23: String "Ox7FF052CC"
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 
@@ -42,56 +39,14 @@ const char InjectedFuncWithStack[INJECTED_FUNCWITHSTACK_SIZE] = {
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 
-	0x53, //38: push ebx
-	0x50, //39: push eax
-	0x68, 0xC4, 0x79, 0x40, 0x00, //3A: push 12FF63 <FIXUP>
-	0xA1, 0xA0, 0x79, 0x40, 0x00, //3F: mov eax, LoadLibraryA <FIXUP>
-	0xFF, 0xD0, //44: call eax
-	0x0B, 0xC0, //46: or eax, eax
-	0x74, 0x21, //48: jz 12FFAA
-	0x50, //4A: push eax
-	0x68, 0xB0, 0x79, 0x40, 0x00, //4B: push 12FF4F <FIXUP>
-	0x50, //50: push eax
-	0xA1, 0xA4, 0x79, 0x40, 0x00, //51: mov eax, GetProcAddress <FIXUP>
-	0xFF, 0xD0, //56: call eax
-	0x0B, 0xC0, //58: or eax, eax
-	0x74, 0x07, //5A: jz 12FFA2
-	0x68, 0xAC, 0x79, 0x40, 0x00, //5C: push 12FF4B <FIXUP>
-	0xFF, 0xD0, //61: call eax (result of getprocaddress)
-	0x58, //63: pop eax
-	0xA1, 0xA8, 0x79, 0x40, 0x00, //64: mov eax, FreeLibrary <FIXUP>
-	0xFF, 0xD0, //69: call eax
-	0x58, //6B: pop eax
-	0x5B, //6C: pop ebx
-	0x81, 0xC4, 0x00, 0x08, 0x00, 0x00, //6D: add esp, 0x800
-	0x53, //73: push ebx
-	0xC3, //74: ret
-
-	0x90, 0x90, 0x90, 0x90, //0x75 - 0x7F: padding?
-	0x90, 0x90, 0x90, 0x90, 
-	0x90, 0x90, 0x90
 };
 
-const int MODIFIED_FUNCWITHSTACK_SIZE = 0x80 + 0x15;
-const char ModifiedInjectedFunc[MODIFIED_FUNCWITHSTACK_SIZE] = {
-	0x00, 0x00, 0x00, 0x00, //0x00 - 0x03: LoadLibraryA Address
-	0x00, 0x00, 0x00, 0x00, //0x04 - 0x07: GetProcAddress Address
-	0x00, 0x00, 0x00, 0x00, //0x08 - 0x0B: FreeLibrary Address
-	0x00, 0x00, 0x00, 0x00, //0x0C - 0x0F: Pointer to Ox7FF052C args
-	0x00, 0x00, 0x00, 0x00, //0x10 - 0x23: String "Ox7FF052C"
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00,	
-	0x00, 0x00, 0x00, 0x00, //0x24 - 0x37: String "dplayerx"
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-
+unsigned char InjectedFunc_1[0x2] = {
 	0x53, //38: push ebx
 	0x50, //39: push eax
+};
 
+unsigned char InjectedFunc_Debug[0x15] = {
 	0x6A, 0x10, //3A: push 0x10
 	0xB8, 0x46, 0x24, 0x80, 0x7C, //3B: mov eax, 0x7c802446 (Kernel32.Sleep)
 	0xFF, 0xD0, //40: call eax
@@ -100,8 +55,9 @@ const char ModifiedInjectedFunc[MODIFIED_FUNCWITHSTACK_SIZE] = {
 	0x85, 0xC0, //49: test eax, eax
 	0x74, 0xEC, //4B: jz 0x3A
 	0xCC, //4D: int3
+};
 
-
+unsigned char InjectedFunc_2[0x46] = {
 	0x68, 0xC4, 0x79, 0x40, 0x00, //3A: push 12FF63 <FIXUP>
 	0xA1, 0xA0, 0x79, 0x40, 0x00, //3F: mov eax, LoadLibraryA <FIXUP>
 	0xFF, 0xD0, //44: call eax
@@ -129,6 +85,7 @@ const char ModifiedInjectedFunc[MODIFIED_FUNCWITHSTACK_SIZE] = {
 	0x90, 0x90, 0x90, 0x90, 
 	0x90, 0x90, 0x90
 };
+
 
 
 const int f176A6_SIZE = 0x20;
@@ -184,7 +141,7 @@ LPVOID CreateMDJFileMap(int pid)
 	return mapView;
 }
 
-void InjectDebug(PROCESS_INFORMATION& info)
+void Inject(PROCESS_INFORMATION& info, bool debug)
 {
 	CONTEXT c;
 	ZeroMemory(&c, sizeof(CONTEXT));
@@ -193,34 +150,56 @@ void InjectDebug(PROCESS_INFORMATION& info)
 	DWORD esp = c.Esp;
 
 	std::string s_dplayerx = "dplayerx";
-	std::string s_Ox77F052CC5 = "Ox77F052CC5";
+	std::string s_Ox77F052CC = "Ox77F052CC";
 	DWORD dLoadLibraryA = 0x7C801D7B;
 	DWORD dFreeLibrary = 0x7C80AC6E;
 	DWORD dGetProcAddress = 0x7C80AE30;	
-	unsigned char* memory = new unsigned char[0xB5 + 0x15];
-	memset(memory, 0, 0xB5 + 0x15);
-	memcpy(memory, ModifiedInjectedFunc, MODIFIED_FUNCWITHSTACK_SIZE);
+	unsigned int mem_size = 0xB5;
+	if(debug)
+	{
+		mem_size += sizeof(InjectedFunc_Debug);
+	}
+	unsigned char* memory = new unsigned char[mem_size];
+	unsigned int index = 0;
+	memset(memory, 0, mem_size);
+	memcpy(&memory[index], InjectedStack, sizeof(InjectedStack));
+	index += sizeof(InjectedStack);
+	memcpy(&memory[index], InjectedFunc_1, sizeof(InjectedFunc_1));
+	index += sizeof(InjectedFunc_1);
+	if(debug)
+	{
+		memcpy(&memory[index], InjectedFunc_Debug, sizeof(InjectedFunc_Debug));
+		index += sizeof(InjectedFunc_Debug);
+	}
+	memcpy(&memory[index], InjectedFunc_2, sizeof(InjectedFunc_2));
+	index += sizeof(InjectedFunc_2);
 
-	//TODO: DWORD argAddress = esp - 0x39;
+	unsigned int d_offset = 0;
+	if(debug)
+		d_offset = sizeof(InjectedFunc_Debug);
+	printf("Copied 0x%X\n bytes\n", index);
+
+	
+	DWORD argAddress = esp - 0x39 - d_offset;
 	memcpy(&memory[0x00], &dLoadLibraryA, 4);
 	memcpy(&memory[0x04], &dGetProcAddress, 4);
 	memcpy(&memory[0x08], &dFreeLibrary, 4);
-	//TODO: memcpy(&memory[0x0C], &argAddress, 4);
-	memcpy(&memory[0x10], s_Ox77F052CC5.c_str(), s_Ox77F052CC5.size());
+	memcpy(&memory[0x0C], &argAddress, 4);
+	memcpy(&memory[0x10], s_Ox77F052CC.c_str(), s_Ox77F052CC.size());
 	memcpy(&memory[0x24], s_dplayerx.c_str(), s_dplayerx.size());
 	
-	DWORD dplayerx_stackAddress = esp - 0x99;
-	DWORD lla_stackAddress = esp - 0xBD;
-	DWORD Ox77_stackAddress = esp - 0xAD;
-	DWORD gpa_stackAddress = esp - 0xB9;
-	DWORD mv_stackAddress = esp - 0xB1;
-	DWORD fl_stackAddress = esp - 0xB5;
-	memcpy(&memory[0x3B + 0x15], &dplayerx_stackAddress, 4);
-	memcpy(&memory[0x40 + 0x15], &lla_stackAddress, 4);
-	memcpy(&memory[0x4C + 0x15], &Ox77_stackAddress, 4);
-	memcpy(&memory[0x52 + 0x15], &gpa_stackAddress, 4);
-	memcpy(&memory[0x5D + 0x15], &mv_stackAddress, 4);
-	memcpy(&memory[0x65 + 0x15], &fl_stackAddress, 4);
+	DWORD dplayerx_stackAddress = esp - 0x99 - d_offset;
+	DWORD lla_stackAddress = esp - 0xBD - d_offset;
+	DWORD Ox77_stackAddress = esp - 0xAD - d_offset;
+	DWORD gpa_stackAddress = esp - 0xB9 - d_offset;
+	DWORD mv_stackAddress = esp - 0xB1 - d_offset;
+	DWORD fl_stackAddress = esp - 0xB5 - d_offset;
+	memcpy(&memory[0x3B + d_offset], &dplayerx_stackAddress, 4);
+	memcpy(&memory[0x40 + d_offset], &lla_stackAddress, 4);
+	memcpy(&memory[0x4C + d_offset], &Ox77_stackAddress, 4);
+	memcpy(&memory[0x52 + d_offset], &gpa_stackAddress, 4);
+	memcpy(&memory[0x5D + d_offset], &mv_stackAddress, 4);
+	memcpy(&memory[0x65 + d_offset], &fl_stackAddress, 4);
 
 	//0095: file at dwEntry + 176A6
 	const int f176A6_iSize = f176A6_SIZE / sizeof(int);
@@ -229,10 +208,13 @@ void InjectDebug(PROCESS_INFORMATION& info)
 	const int modifyValue = 0x19;
 	for(int i = 0; i < 8; ++i)
 		HiddenDataDecrypted[i] ^= modifyValue; 
-	memcpy(&memory[0x95 + 0x15], (char*)HiddenDataDecrypted, f176A6_SIZE);
+	memcpy(&memory[0x95 + d_offset], (char*)HiddenDataDecrypted, f176A6_SIZE);
 
-	DWORD nextEip = esp - 0x85;
-	DWORD baseAddress = esp - 0xBD; //12FF3F
+	DWORD nextEip = esp - 0x85 - d_offset;
+	printf("esp= 0x%X\n", esp);
+	printf("nextEip= 0x%X\n", nextEip);
+	DWORD baseAddress = esp - 0xBD - d_offset; //12FF3F
+	printf("baseAddress= 0x%X\n", baseAddress);
 	DWORD eip = c.Eip;	
 	c.Ebx = eip;
 	c.Esp = esp - 0x800;
@@ -240,9 +222,10 @@ void InjectDebug(PROCESS_INFORMATION& info)
 	c.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_i386;
 	SetThreadContext(info.hThread, &c);
 	SIZE_T bytesWritten;
-	WriteProcessMemory(info.hProcess, (LPVOID)baseAddress, memory, 0xB5, &bytesWritten);
-	printf("Injected at: 0x%08X, eip = 0x%08X\n", baseAddress, nextEip);
-	for(int i = 0; i < (0xB5 + 0x15); ++i)
+	printf("mem_size = 0x%X\n", mem_size);
+	WriteProcessMemory(info.hProcess, (LPVOID)baseAddress, memory, mem_size, &bytesWritten);
+	printf("Injected 0x%X bytes at: 0x%08X, eip = 0x%08X\n", bytesWritten, baseAddress, nextEip);
+	for(int i = 0; i < (0xB5 + d_offset); ++i)
 	{
 		if((i % 0x10) == 0)
 			printf("%03X: ", i);
@@ -253,123 +236,21 @@ void InjectDebug(PROCESS_INFORMATION& info)
 	printf("\n");
 	delete memory;
 }
-
-void Inject(PROCESS_INFORMATION& info)
-{
-	CONTEXT c;
-	ZeroMemory(&c, sizeof(CONTEXT));
-	c.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_i386;
-	GetThreadContext(info.hThread, &c);
-	DWORD esp = c.Esp;
-
-	std::string s_dplayerx = "dplayerx";
-	std::string s_Ox77F052CC5 = "Ox77F052CC5";
-
-	//They literally hardcode these values
-	DWORD dLoadLibraryA = 0x7C801D7B;
-	DWORD dFreeLibrary = 0x7C80AC6E;
-	DWORD dGetProcAddress = 0x7C80AE30;
-	
-	//Includes stack and code
-	//12FF3F = start of data
-	//12FF77 = eip
-
-	
-	//Memory Layout:
-	//0x00 - 0x80 = Injected Function
-	//0x80 - 0xB5 = Unknown
-	
-	unsigned char* memory = new unsigned char[0xB5];
-	memset(memory, 0, 0xB5);
-	memcpy(memory, InjectedFuncWithStack, INJECTED_FUNCWITHSTACK_SIZE);
-
-	//0000: LoadLibraryA
-	//0004: GetProcAddress
-	//0008: FreeLibrary
-	//000C: Stack Address 12FFC3 (-0x39), 0x38 + 0x0C (12FF3F + 84) ModifyValues*
-	//0010: "Ox77F052C" (takes 3 dwords)
-	//0024: "dplayerx" (takes 3 dwords)
-
-	//TODO: DWORD argAddress = esp - 0x39;
-	memcpy(&memory[0x00], &dLoadLibraryA, 4);
-	memcpy(&memory[0x04], &dGetProcAddress, 4);
-	memcpy(&memory[0x08], &dFreeLibrary, 4);
-	//TODO: memcpy(&memory[0x0C], &argAddress, 4);
-	memcpy(&memory[0x10], s_Ox77F052CC5.c_str(), s_Ox77F052CC5.size());
-	memcpy(&memory[0x24], s_dplayerx.c_str(), s_dplayerx.size());
-	
-	//Modifying the code in-line:
-	//0038: Code Start
-	//003B: Stack Address 12FF63 (-0x99), 0x38 + 0x03 (12FF3F + 24) dplayerx
-	//0040: Stack Address 12FF3F (-0xBD), 0x38 + 0x08 (12FF3F + 00) LoadLibraryA
-	//004C: Stack Address 12FF4F (-0xAD), 0x38 + 0x14 (12FF3F + 10) Ox77F052C
-	//0052: Stack Address 12FF43 (-0xB9), 0x38 + 0x1A (12FF3F + 04) GetProcAddress
-	//005D: Stack Address 12FF4B (-0xB1), 0x38 + 0x25 (12FF3F + 10) ModifyValues* - arg to Ox77F func
-	//0065: Stack Address 12FF47 (-0xB5), 0x38 + 0x2D (12FF3F + 08) FreeLibrary
-
-	DWORD dplayerx_stackAddress = esp - 0x99;
-	DWORD lla_stackAddress = esp - 0xBD;
-	DWORD Ox77_stackAddress = esp - 0xAD;
-	DWORD gpa_stackAddress = esp - 0xB9;
-	DWORD mv_stackAddress = esp - 0xB1;
-	DWORD fl_stackAddress = esp - 0xB5;
-	memcpy(&memory[0x3B], &dplayerx_stackAddress, 4);
-	memcpy(&memory[0x40], &lla_stackAddress, 4);
-	memcpy(&memory[0x4C], &Ox77_stackAddress, 4);
-	memcpy(&memory[0x52], &gpa_stackAddress, 4);
-	memcpy(&memory[0x5D], &mv_stackAddress, 4);
-	memcpy(&memory[0x65], &fl_stackAddress, 4);
-
-	
-	//Additional Data:
-	//0084: ModifyValues[0] 78DE02A2
-	//0088: ModifyValues[1] 78DE02A2
-	//008C: ModifyValues[2] 78DE02A2
-	//0090: ModifyValues[3] 78DE02A2
-	//0094: wShowWindowResult = 0x33
-
-	//TODO ---
-
-	//0095: file at dwEntry + 176A6
-	const int f176A6_iSize = f176A6_SIZE / sizeof(int);
-	int HiddenDataDecrypted[f176A6_iSize];
-	memcpy(HiddenDataDecrypted, HiddenData, f176A6_SIZE);
-	const int modifyValue = 0x19;
-	for(int i = 0; i < 8; ++i)
-		HiddenDataDecrypted[i] ^= modifyValue; 
-	memcpy(&memory[0x95], (char*)HiddenDataDecrypted, f176A6_SIZE);
-
-	DWORD nextEip = esp - 0x85;
-	DWORD baseAddress = esp - 0xBD; //12FF3F
-	DWORD eip = c.Eip;	
-	c.Ebx = eip;
-	c.Esp = esp - 0x800;
-	c.Eip = nextEip;
-	c.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_i386;
-	SetThreadContext(info.hThread, &c);
-	SIZE_T bytesWritten;
-	WriteProcessMemory(info.hProcess, (LPVOID)baseAddress, memory, 0xB5, &bytesWritten);
-	printf("Injected at: 0x%08X, eip = 0x%08X\n", baseAddress, nextEip);
-	for(int i = 0; i < 0xB5; ++i)
-	{
-		if((i % 0x10) == 0)
-			printf("%03X: ", i);
-		printf("%02X ", memory[i] % 0xFF);
-		if(((i + 1) % 0x10) == 0)
-			printf("\n");
-	}
-	printf("\n");
-	delete memory;
-}
-
 
 int main(int argc, const char** argv)
 {
+	bool debug = false;
 	if(argc < 3)
 	{
 		printf("Usage: %s <icd file> <exe file>\n", argv[0]);
 		return 1;
 	}
+	for(int i = 3; i < argc; ++i)
+	{
+		if(strcmp(argv[i], "--debug") == 0)
+			debug = true;
+	}
+		
 	std::string commandLine(argv[2]);
 	commandLine.append("\\\"d\"");
 	STARTUPINFOA startup;
@@ -392,7 +273,7 @@ int main(int argc, const char** argv)
 	memcpy(mapView, FileMapData, FILEMAP_SIZE);
 	printf("Press any key to inject...\n");
 	_getch();
-	InjectDebug(processInformation);
+	Inject(processInformation, debug);
 	printf("Press any key to resume thread...\n");
 	_getch();
 	ResumeThread(processInformation.hThread);
