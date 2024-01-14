@@ -78,9 +78,9 @@ unsigned char InjectedFunc_2[0x46] = {
 	0x58, //6B: pop eax
 	0x5B, //6C: pop ebx
 	0x81, 0xC4, 0x00, 0x08, 0x00, 0x00, //6D: add esp, 0x800
+
 	0x53, //73: push ebx
 	0xC3, //74: ret
-
 	0x90, 0x90, 0x90, 0x90, //0x75 - 0x7F: padding?
 	0x90, 0x90, 0x90, 0x90, 
 	0x90, 0x90, 0x90
@@ -92,6 +92,13 @@ const int f176A6_SIZE = 0x20;
 const char HiddenData[f176A6_SIZE] = {
 	0x3A, 0xAE, 0x69, 0x16, 0x64, 0x15, 0x65, 0x27, 0x8E, 0x7C, 0x60, 0x38, 0xB8, 0xE3, 0x5B, 0x49,
 	0xE2, 0x4A, 0x57, 0x5A, 0x0C, 0xB2, 0x52, 0x6B, 0x36, 0x19, 0x4E, 0x7C, 0x60, 0x80, 0x49, 0x8D
+};
+
+const char F_176A6_Decrypted[f176A6_SIZE] = {
+	0x12, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00,
+	0x12, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00,
+	0x12, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00,
+	0x12, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00
 };
 
 //0x00 - 0x80 = function ported
@@ -161,26 +168,53 @@ void Inject(PROCESS_INFORMATION& info, bool debug)
 	}
 	unsigned char* memory = new unsigned char[mem_size];
 	unsigned int index = 0;
+	unsigned int code_size = 0;
 	memset(memory, 0, mem_size);
 	memcpy(&memory[index], InjectedStack, sizeof(InjectedStack));
 	index += sizeof(InjectedStack);
 	memcpy(&memory[index], InjectedFunc_1, sizeof(InjectedFunc_1));
 	index += sizeof(InjectedFunc_1);
+	code_size += sizeof(InjectedFunc_1);
 	if(debug)
 	{
 		memcpy(&memory[index], InjectedFunc_Debug, sizeof(InjectedFunc_Debug));
 		index += sizeof(InjectedFunc_Debug);
+		code_size += sizeof(InjectedFunc_Debug);
 	}
 	memcpy(&memory[index], InjectedFunc_2, sizeof(InjectedFunc_2));
 	index += sizeof(InjectedFunc_2);
+	code_size += sizeof(InjectedFunc_2);
 
 	unsigned int d_offset = 0;
 	if(debug)
 		d_offset = sizeof(InjectedFunc_Debug);
-	printf("Copied 0x%X\n bytes\n", index);
 
-	
-	DWORD argAddress = esp - 0x39 - d_offset;
+	printf("Total Size=0x%X, Stack Size=0x%X, Code Size=0x%X\n",
+		mem_size, sizeof(InjectedStack), code_size);
+
+
+	DWORD baseAddress = esp - 0xBD - d_offset; //12FF3F
+	printf("baseAddress= 0x%X\n", baseAddress);
+
+	int f176A6_address = esp - 0x20;
+	int wShowWindowResult_address = f176A6_address - 1;
+	DWORD argAddress = wShowWindowResult_address - 0x10;
+	const unsigned char wShowWindowResult = 0x33;
+
+	const int f176A6_offset =  mem_size - (esp - f176A6_address); //at 12ffd4 instead of at 12ffdc
+	const int wShowWindowResult_offset = mem_size - (esp -wShowWindowResult_address);
+	const int arg_offset = mem_size - (esp - argAddress);
+
+	f176A6_address = baseAddress + f176A6_offset;
+	wShowWindowResult_address = baseAddress + wShowWindowResult_offset;
+	argAddress = baseAddress + arg_offset;
+
+	printf("Data offsets:\n");
+	printf("Ox7FF052C Args: 0x%X (0x%X)\n",  argAddress, arg_offset);
+	printf("wShowWindow Result: 0x%X (0x%X)\n",  wShowWindowResult_address, wShowWindowResult_offset);
+	printf("176A6 Data: 0x%X (0x%X)\n", f176A6_address, f176A6_offset);
+
+	//Stack Setup
 	memcpy(&memory[0x00], &dLoadLibraryA, 4);
 	memcpy(&memory[0x04], &dGetProcAddress, 4);
 	memcpy(&memory[0x08], &dFreeLibrary, 4);
@@ -188,6 +222,7 @@ void Inject(PROCESS_INFORMATION& info, bool debug)
 	memcpy(&memory[0x10], s_Ox77F052CC.c_str(), s_Ox77F052CC.size());
 	memcpy(&memory[0x24], s_dplayerx.c_str(), s_dplayerx.size());
 	
+	//Code relocation fixup
 	DWORD dplayerx_stackAddress = esp - 0x99 - d_offset;
 	DWORD lla_stackAddress = esp - 0xBD - d_offset;
 	DWORD Ox77_stackAddress = esp - 0xAD - d_offset;
@@ -201,20 +236,29 @@ void Inject(PROCESS_INFORMATION& info, bool debug)
 	memcpy(&memory[0x5D + d_offset], &mv_stackAddress, 4);
 	memcpy(&memory[0x65 + d_offset], &fl_stackAddress, 4);
 
-	//0095: file at dwEntry + 176A6
+	//Data Setup
+	/*
 	const int f176A6_iSize = f176A6_SIZE / sizeof(int);
 	int HiddenDataDecrypted[f176A6_iSize];
 	memcpy(HiddenDataDecrypted, HiddenData, f176A6_SIZE);
-	const int modifyValue = 0x19;
+	const int modifyValue = 0x19;	
 	for(int i = 0; i < 8; ++i)
-		HiddenDataDecrypted[i] ^= modifyValue; 
-	memcpy(&memory[0x95 + d_offset], (char*)HiddenDataDecrypted, f176A6_SIZE);
+		HiddenDataDecrypted[i] ^= modifyValue;
+	memcpy(&memory[f176A6_offset], (char*)HiddenDataDecrypted, f176A6_SIZE);
+	*/
+	memcpy(&memory[f176A6_offset], (char*)F_176A6_Decrypted, f176A6_SIZE);
+
+	memcpy(&memory[wShowWindowResult_offset], &wShowWindowResult, 1);
+
+	const DWORD FunctionArgValue = 0x78DE02A9;
+	for(int i = 0; i < 4; ++i)
+	{
+		memcpy(&memory[arg_offset + (i * 4)], &FunctionArgValue, 4);
+	}
 
 	DWORD nextEip = esp - 0x85 - d_offset;
 	printf("esp= 0x%X\n", esp);
 	printf("nextEip= 0x%X\n", nextEip);
-	DWORD baseAddress = esp - 0xBD - d_offset; //12FF3F
-	printf("baseAddress= 0x%X\n", baseAddress);
 	DWORD eip = c.Eip;	
 	c.Ebx = eip;
 	c.Esp = esp - 0x800;
